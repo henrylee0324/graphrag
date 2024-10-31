@@ -44,6 +44,16 @@ DEFAULT_REDUCE_LLM_PARAMS = {
 }
 
 log = logging.getLogger(__name__)
+response_format = """
+The response should be JSON formatted as follows:
+{{
+    "points": [
+        {{"description": "Description of point 1 [Data: Reports (report ids)]", "score": score_value}},
+        {{"description": "Description of point 2 [Data: Reports (report ids)]", "score": score_value}}
+    ]
+}}
+Please response with only JSON format provided.
+"""
 
 
 @dataclass
@@ -176,7 +186,7 @@ class GlobalSearch(BaseSearch):
             search_prompt = self.map_system_prompt.format(context_data=context_data)
             search_messages = [
                 {"role": "system", "content": search_prompt},
-                {"role": "user", "content": query},
+                {"role": "user", "content": f"{query}\n{response_format}"},
             ]
             async with self.semaphore:
                 search_response = await self.llm.agenerate(
@@ -191,6 +201,7 @@ class GlobalSearch(BaseSearch):
                 search_response = clean_up_json(search_response)
                 try:
                     # parse search response json
+                    print(f"search_response: \n{search_response}")
                     processed_response = self.parse_search_response(search_response)
                 except ValueError:
                     log.exception("Error parsing search response json")
